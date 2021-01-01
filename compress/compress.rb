@@ -28,15 +28,14 @@ def parse_code_type(args)
     code_type = get_code_type($1)
   else
     # If user hasn't specified code flag, return default (c1 or Elias gamma-code)
-    code_type = 0b0
+    code_type = 1
   end
 end
 
 def get_code_type(flag)
-  type = { "1" => 0b0, "2" => 0b100000000 }  
-  code_type = type[flag]
+  code_type = flag.to_i
 
-  return code_type unless code_type.nil?
+  return code_type unless (code_type == 0 || code_type >= 3)
 
   puts 'Error: code parameter is not a valid value!'
   exit(1)
