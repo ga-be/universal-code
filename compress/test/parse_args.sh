@@ -27,7 +27,7 @@
 ../compress.rb -c2 -b 24 1gb.file
 
 # Expected no error and right values
-../compress.rb -c2 -b 15 20b.file # expected 256 15 20b.file 20
-../compress.rb -b 3 1kb.file # expected 0 3 1kb.file 1024
-../compress.rb 1mb.file # expected 0 8 1mb.file 1048576
+../compress.rb -c2 -b 15 20b.file # expected 2 15 20b.file 20
+../compress.rb -b 3 1kb.file # expected 1 3 1kb.file 1024
+../compress.rb 1mb.file # expected 1 8 1mb.file 1048576
 
