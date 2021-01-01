@@ -15,14 +15,6 @@ def check_for_help
   end  
 end
 
-def check_word_size(word_size, file_size)
-    if word_size > file_size
-      word_size = file_size
-    elsif word_size <= 0 || word_size > 16
-      word_size = 8
-    end
-end
-
 def parse_code_type(args)
   if args[/-c(\d+)?/]
     code_type = get_code_type($1)
@@ -41,20 +33,19 @@ def get_code_type(flag)
   exit(1)
 end
 
-def check_byte_count(count)
-  if !/^\d+$/.match(count)
-    puts 'Error: bits parameter must be a positive integer!'
-    exit(1)
-  end
-
-  true
+def validate_word_size(word_size)
+  return word_size if (2..16).include?(word_size)
+  
+  puts 'Error: bits parameter must be a positive integer in the range 2-16!'
+  exit(1)
 end
 
 def parse_word_size(args)
   if args[/-b (\w+)?/]
-    $1.to_i if check_byte_count($1)
+    validate_word_size($1.to_i)
   else
-     8 # Default word size
+    # If user hasn't specified bits flag, return default 
+    8 
   end
 end
 
@@ -77,8 +68,10 @@ def parse_args
   code_type = parse_code_type(args)
   word_size = parse_word_size(args)
   file, file_size = parse_file(args)
-  
-  check_word_size(word_size, file_size)
+
+  if word_size > file_size
+    word_size = file_size
+  end
 
   return {type: code_type, word_size: word_size, file: file, file_size: file_size}
 end
