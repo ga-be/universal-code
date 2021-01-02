@@ -47,9 +47,8 @@ def parse_word_size(args)
   end
 end
 
-def parse_file(file)
-  puts file
-  return File.open(file), File.size(file) if File.file?(file)
+def parse_file_name(file_name)
+  return file_name, File.size(file_name) if File.file?(file_name)
   
   puts "Error: file doesn't exist!"
   exit(1)
@@ -61,7 +60,7 @@ def parse_args
   args = ARGV.join(' ')
   code_type = parse_code_type(args)
   word_size = parse_word_size(args)
-  file, file_size = parse_file(ARGV[-1])
+  file, file_size = parse_file_name(ARGV[-1])
 
   if word_size > file_size
     word_size = file_size
