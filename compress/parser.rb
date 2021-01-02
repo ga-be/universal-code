@@ -66,6 +66,6 @@ def parse_args
     word_size = file_size
   end
 
-  return {type: code_type, word_size: word_size, file: file, file_size: file_size}
+  {type: code_type, word_size: word_size, file: file}
 end
 
