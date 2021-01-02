@@ -39,7 +39,7 @@ def validate_word_size(word_size)
 end
 
 def parse_word_size(args)
-  if args[/-b (\w+)?/]
+  if args[/-b (\d+)?/]
     validate_word_size($1.to_i)
   else
     # If user hasn't specified bits flag, return default 
