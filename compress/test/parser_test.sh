@@ -27,13 +27,9 @@ test '../compress.rb -c1 -b 17 20b.file' "Error: bits parameter"
 test '../compress.rb -c1 -b number 20b.file' "Error: bits parameter" 
 test '../compress.rb -c1 -b 20b.file' "Error: bits parameter"
 
-# Expected invalid file format error
-test '../compress.rb -c1 -b 5 bad_format' "Error: invalid file name format"
-test '../compress.rb -c2 -b 12 badformat' "Error: invalid file name format"
-test '../compress.rb -c1 -b 13 bad-format' "Error: invalid file name format"
-test '../compress.rb -c1 -b 2 bad_format.' "Error: invalid file name format"
-
 # Expected file doesn't exist error
+test '../compress.rb -c1 -b 13 ../../bad.file' "Error: file doesn't exist!"
+test '../compress.rb -c1 -b 2 ~/top.file' "Error: file doesn't exist!"
 test '../compress.rb -c1 -b 12 25b.file' "Error: file doesn't exist!"
 test '../compress.rb -c2 -b 11 1gb.file' "Error: file doesn't exist!"
 
