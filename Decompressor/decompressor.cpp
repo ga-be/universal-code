@@ -58,21 +58,6 @@ void preProcess(){
     
 }
 
-void subractOne(string &binString){
-
-    for (int i = binString.size()-1; i>=0 ; i--){
-        if(binString[i] == '0'){
-            binString[i] = '1';
-        }else{ //binString[i] == '1'
-            binString[i] = '0';
-            break;
-        }
-    }
-    int zerosToAdd = wordLength - binString.size();
-    
-
-}
-
 void readHeader(ifstream *file){
     char firstByte;
     file->get(firstByte);
@@ -118,6 +103,10 @@ void eliasDecoding(){
     for (int i = 0; i < readBuffer.size() ;){
         cout<<"i:"<<i<<endl;;
         if(readBuffer[i]=='0'){
+            if(i == readBuffer.size()-1){
+                readBuffer = readBuffer.substr(i-zerosCounter);
+                return;
+            }
             zerosCounter++;
             i++;
         }else{ 
