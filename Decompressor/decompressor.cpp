@@ -68,16 +68,16 @@ void readHeader(ifstream *file){
         C1 = true;
     }
 
-    wordLength = int((firstByte >> 3)&15); //take next 4 bits
+    wordLength = int((firstByte >> 3)&15)+1; //take next 4 bits
     
     readBuffer = bitset<3>(firstByte&7).to_string(); //last 3 bits goes to buffer for further processing
 
-    cout<<"Zodzio ilgis: "<<wordLength<<endl;
+    //cout<<"Zodzio ilgis: "<<wordLength<<endl;
     //cout<<"": "wordLength<<endl;
     //cout<<"Zodzio ilgis: "wordLength<<endl;
     permutationsCount = pow(2,wordLength);
     currentPosition = permutationsCount;
-    cout<<"currentPosition: "<<currentPosition<<endl;
+    //cout<<"currentPosition: "<<currentPosition<<endl;
 }
 
 void readBlockFromFile(ifstream *file){
@@ -101,7 +101,7 @@ void eliasDecoding(){
     string buffer;
     
     for (int i = 0; i < readBuffer.size() ;){
-        cout<<"i:"<<i<<endl;;
+        //cout<<"i:"<<i<<endl;;
         if(readBuffer[i]=='0'){
             if(i == readBuffer.size()-1){
                 readBuffer = readBuffer.substr(i-zerosCounter);
@@ -114,8 +114,7 @@ void eliasDecoding(){
             if(readBuffer.size()-i-1 >= zerosCounter){//means there is enough chars left to read in buffer
                 //cout<<zerosCounter<<" "<<i<<" "<<u<<"\n";
                 ustr+=readBuffer.substr(i+1,zerosCounter);
-                cout<<"ustr: "<<ustr<<endl;
-                //subractOne(u); //function not necessary as it could be firstly converted to int and same operation applied, due to the fact that we use stoi later anyways
+                //cout<<"ustr: "<<ustr<<endl;
                 int u = stoi(ustr, nullptr, 2 ) - 1;
                 if(C2){//Elias delta  
                     if(readBuffer.size() - (i+zerosCounter+1) >= u){
@@ -124,17 +123,17 @@ void eliasDecoding(){
                             ustr+=readBuffer.substr(i+zerosCounter+1,u);
                             i+=u;
                         }
-                        cout<<"ustr1: "<<ustr<<endl;
-                        cout<<u;
+                        //cout<<"ustr1: "<<ustr<<endl;
+                        //cout<<u;
                         u = stoi(ustr,nullptr,2) - 1;
                     }else{
                         readBuffer = readBuffer.substr(i-zerosCounter);
                         return;
                     }
                 }
-                cout<<"CurrenPosition: "<<currentPosition<<" stoi: "<<u<<endl;
+                //cout<<"CurrenPosition: "<<currentPosition<<" stoi: "<<u<<endl;
                 int at = currentPosition - u - 1;
-                cout<<"at: "<<at<<endl;
+                //cout<<"at: "<<at<<endl;
                 string word = positions[at];
                 writeBufferBits+=word;
                 positions.erase(at);
@@ -153,20 +152,25 @@ void eliasDecoding(){
 
 void writeToFile(ofstream *outputFile){
     unsigned char byte;
-    cout<<writeBufferBits<<endl;
+    //cout<<writeBufferBits<<endl;
     while(writeBufferBits.size()>=8){
         for ( int i = 0; i < 8; i++){
             if(writeBufferBits[i]=='1'){
-                cout<<"pries"<<int(byte)<<endl;
+                //cout<<"pries"<<int(byte)<<endl;
                 byte|=(128>>i);
-                cout<<"po"<<int(byte)<<endl;
+                //cout<<"po"<<int(byte)<<endl;
             }
         }
+        //cout<<"galutinis"<<(int)byte<<endl;
         writeBufferBytes.push_back(byte);
+        //cout<<"OPA "<<writeBufferBits<<endl;
         writeBufferBits = writeBufferBits.substr(8);
+        byte^=byte; 
+        //cout<<"OPA1 "<<writeBufferBits<<endl;
     }
-    cout<<writeBufferBytes;
+    //cout<<writeBufferBytes;
     outputFile->write(writeBufferBytes.c_str(), writeBufferBytes.size());
+    writeBufferBytes.clear();
 }
 
 int main(int argc, char *argv[]){
@@ -179,7 +183,6 @@ int main(int argc, char *argv[]){
         return 1;
     }
     outputFilename+=filename;
-    outputFilename = "test.bin";
     ofstream outputFile(outputFilename, ios::out | ios::binary);
 
     readHeader(&inputFile); 
