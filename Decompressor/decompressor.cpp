@@ -4,6 +4,7 @@
 #include <bitset>
 #include <math.h>
 #include <unordered_map>
+#include <chrono>
 
 //DEFINES
 #define READING_BLOCK_SIZE 1024
@@ -17,7 +18,9 @@ int wordLength = 0;
 string readBuffer;
 string writeBufferBits;
 string writeBufferBytes;
-string filename;
+string fullpath;
+string outputFilename;
+string errorTxt;
 bool endOfFile = false;
 
 
@@ -29,15 +32,22 @@ unordered_map<unsigned long long int,string> positions; //key is position of las
 int permutationsCount = 0;
 void parseArguments(int argc, char *argv[]){
     if(argc>2){
+        errorTxt="Only 1 argument could be given.\n";
         error = true;
+        return;
     }
-
-    filename = argv[1];
-}
-
-bool openFile(ifstream *file){
-    file->open(filename,ios::binary);
-    return file;
+    fullpath = argv[1];
+    size_t found=fullpath.find(".elias");
+    if (found==string::npos){
+        error = true;
+        errorTxt="Compressed file extension must be .elias.\n";
+        return;
+    }
+    else{
+        string pathWithoutElias = fullpath.substr(0,found);
+        size_t extensionDot = pathWithoutElias.find_last_of('.');
+        outputFilename = pathWithoutElias.substr(0,extensionDot) + "-decompressed" + pathWithoutElias.substr(extensionDot);
+    }
 }
 
 void generateBinaryStrings(int n, string binStr, int i, int &count){
@@ -54,10 +64,6 @@ void generateBinaryStrings(int n, string binStr, int i, int &count){
     generateBinaryStrings(n,binStr,i+1, count);
 }
 
-void preProcess(){
-    
-}
-
 void readHeader(ifstream *file){
     char firstByte;
     file->get(firstByte);
@@ -72,12 +78,8 @@ void readHeader(ifstream *file){
     
     readBuffer = bitset<3>(firstByte&7).to_string(); //last 3 bits goes to buffer for further processing
 
-    //cout<<"Zodzio ilgis: "<<wordLength<<endl;
-    //cout<<"": "wordLength<<endl;
-    //cout<<"Zodzio ilgis: "wordLength<<endl;
     permutationsCount = pow(2,wordLength);
     currentPosition = permutationsCount;
-    //cout<<"currentPosition: "<<currentPosition<<endl;
 }
 
 void readBlockFromFile(ifstream *file){
@@ -101,7 +103,6 @@ void eliasDecoding(){
     string buffer;
     
     for (int i = 0; i < readBuffer.size() ;){
-        //cout<<"i:"<<i<<endl;;
         if(readBuffer[i]=='0'){
             if(i == readBuffer.size()-1){
                 readBuffer = readBuffer.substr(i-zerosCounter);
@@ -112,9 +113,7 @@ void eliasDecoding(){
         }else{ 
             string ustr="1";
             if(readBuffer.size()-i-1 >= zerosCounter){//means there is enough chars left to read in buffer
-                //cout<<zerosCounter<<" "<<i<<" "<<u<<"\n";
                 ustr+=readBuffer.substr(i+1,zerosCounter);
-                //cout<<"ustr: "<<ustr<<endl;
                 int u = stoi(ustr, nullptr, 2 ) - 1;
                 if(C2){//Elias delta  
                     if(readBuffer.size() - (i+zerosCounter+1) >= u){
@@ -123,17 +122,13 @@ void eliasDecoding(){
                             ustr+=readBuffer.substr(i+zerosCounter+1,u);
                             i+=u;
                         }
-                        //cout<<"ustr1: "<<ustr<<endl;
-                        //cout<<u;
                         u = stoi(ustr,nullptr,2) - 1;
                     }else{
                         readBuffer = readBuffer.substr(i-zerosCounter);
                         return;
                     }
                 }
-                //cout<<"CurrenPosition: "<<currentPosition<<" stoi: "<<u<<endl;
                 int at = currentPosition - u - 1;
-                //cout<<"at: "<<at<<endl;
                 string word = positions[at];
                 writeBufferBits+=word;
                 positions.erase(at);
@@ -152,54 +147,59 @@ void eliasDecoding(){
 
 void writeToFile(ofstream *outputFile){
     unsigned char byte;
-    //cout<<writeBufferBits<<endl;
     while(writeBufferBits.size()>=8){
         for ( int i = 0; i < 8; i++){
             if(writeBufferBits[i]=='1'){
-                //cout<<"pries"<<int(byte)<<endl;
                 byte|=(128>>i);
-                //cout<<"po"<<int(byte)<<endl;
             }
         }
-        //cout<<"galutinis"<<(int)byte<<endl;
         writeBufferBytes.push_back(byte);
-        //cout<<"OPA "<<writeBufferBits<<endl;
         writeBufferBits = writeBufferBits.substr(8);
         byte^=byte; 
-        //cout<<"OPA1 "<<writeBufferBits<<endl;
     }
-    //cout<<writeBufferBytes;
     outputFile->write(writeBufferBytes.c_str(), writeBufferBytes.size());
     writeBufferBytes.clear();
 }
 
 int main(int argc, char *argv[]){
 
+    auto t1 = chrono::high_resolution_clock::now();
+
     ifstream inputFile;
-    string outputFilename = "decompressed-";
 
     parseArguments(argc, argv);
-    if(!openFile(&inputFile)){ //TODO:printinti error msg
-        return 1;
+    inputFile.open(fullpath,ios::binary);
+    if(!inputFile.is_open()){
+        errorTxt="Error while opening file.\n";
+        error=true;
     }
-    outputFilename+=filename;
-    ofstream outputFile(outputFilename, ios::out | ios::binary);
+    if(!error){
+        ofstream outputFile(outputFilename, ios::out | ios::binary);
 
-    readHeader(&inputFile); 
+        readHeader(&inputFile); 
 
-    string str(wordLength,'0');
-    int temp = 0;
-    generateBinaryStrings(wordLength,str,0,temp);
-    for( const auto& n : positions ) {
-        std::cout << "Key:[" << n.first << "] Value:[" << n.second << "]\n";
+        string str(wordLength,'0');
+        int temp = 0;
+        generateBinaryStrings(wordLength,str,0,temp);
+    
+        while(!endOfFile){
+            readBlockFromFile(&inputFile);
+            eliasDecoding();
+            writeToFile(&outputFile);
+        }
+        inputFile.close();
+        outputFile.close();
     }
-    while(!endOfFile){
-        readBlockFromFile(&inputFile);
-        eliasDecoding();
-        writeToFile(&outputFile);
-    }
+    auto t2 = std::chrono::high_resolution_clock::now();
+    auto duration = chrono::duration_cast<chrono::milliseconds>( (t2 - t1)).count()*0.001;
 
-    inputFile.close();
-    outputFile.close();
+    if(!error){
+        cout<<"Decompression completed!\n";
+        cout<<"Input file: "<<fullpath<<"\n";
+        cout<<"Output file: "<<outputFilename<<"\n";
+        cout<<"Elapsed time: "<<duration<<"\n";
+    }else{
+        cout<<errorTxt;
+    }
     return 0;
 }
