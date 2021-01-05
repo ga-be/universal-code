@@ -1,101 +1,79 @@
 #!/usr/bin/env ruby
 
-require_relative 'parser.rb'
+require_relative 'parser'
+require_relative 'coding'
+require_relative 'utilities'
 
-
-def build_header(code_type, word_size)
-  code_flag = code_type == 1 ? '0' : '1'
+def build_header(parameters)
+  code_flag = parameters[:code_type] == 1 ? '0' : '1'
   # To encode our word size in 4 bits, we subtract 1, so that 1111 denote length of 16 and so on
-  word_flag = "%04d" % (word_size - 1).to_s(2)
+  word_flag = format('%04d', (parameters[:word_size] - 1).to_s(2))
 
   code_flag << word_flag
 end
 
-def pack_data(data)
-  data.pack("C*")
-end
-
-def unpack_data(data)
-  data.unpack("B*")[0]
-end
-
-def read_block(file)
-  File.open(file) do |file|
-    until file.eof?
-      block = file.read(1048576)
-      yield block
-    end
-  end
-end
-
-def encode_block(block, word_size, position_table, gamma_code)
+def encode_block(block, word_size, position_table, coding)
   encoded = ''
-  # Current position is a pointer to a position of a word being encoded, in
-  # regards to a position table.
-  current_position = position_table.size
-
+  current_position = position_table[:current_position]
   data = unpack_data(block)
-  remainder = data.size % word_size
-  if remainder != 0
-    padding = word_size - remainder
-    data << ('0' * padding)
-  end
 
-  max = 0
+  code = coding.code
 
   data.scan(/\d{#{word_size}}/) do |word|
-    word = word.to_sym    
-    gap = (current_position - position_table[word])
-    if gap > max
-      max = gap
-      p max
-    end
-    encoded << gamma_code[gap]
+    word = word.to_sym
+    # Subtract 1 to normalize gap for our code table, which starts from 0
+    gap = (current_position - position_table[word]) - 1
+
+    coding.add_entry(gap) if code[gap].nil?
+
+    encoded << code[gap]
     position_table[word] = current_position
     current_position += 1
   end
 
-  p data.size
-  p encoded.size
+  position_table[:current_position] = current_position
+  encoded
 end
 
-def encode(file, word_size)
+def encode(parameters)
+  start_time = Time.now
+
+  word_size = parameters[:word_size]
+  in_name = parameters[:file_name]
+  out_name = "#{in_name}.elias"
+
+  coding = if parameters[:code_type] == 1
+             GammaCode.new(word_size)
+           else
+             DeltaCode.new(word_size)
+           end
+
+  out_file = File.open(out_name, 'w')
+  encoded = build_header(parameters)
+
   position_table = position_table(word_size)
-  gamma_code = elias_gamma_code
 
-  
-  read_block(file) do |block|
-    encode_block(block, word_size, position_table, gamma_code)
-  end
-end
+  read_block(in_name, word_size) do |block|
+    encoded << encode_block(block, word_size, position_table, coding)
 
-def position_table(word_size)
-  table = {}
-  position = 0
-  
-  ['0', '1'].repeated_permutation(word_size) do |word|
-    table[word.join.to_sym] = position
-    position += 1
-  end
-  
-  table
-end
+    # Guard statement if encoded block is not a multiple of 8
+    next if encoded.size % 8 != 0
 
-def elias_gamma_code
-  # Blank spot at 0th index,
-  # as our code indexes start from 1
-  code = [nil]
-  
-  (1..4096).each do |k|
-    zeroes = '0' * Math.log(k, 2).floor
-    code[k] = zeroes + k.to_s(2)
+    write_block(out_file, encoded)
+    encoded = ''
   end
 
-  code
+  # If we finished reading and encoding blocks and still have unwritten output,
+  # it means it's not a multiple of 8 and we need to add padding
+  unless encoded.empty?
+    encoded = add_padding(encoded)
+    write_block(out_file, encoded)
+  end
+
+  end_time = Time.now
+
+  print_compression_info(in_name, out_name, end_time - start_time)
 end
 
 parameters = parse_args
-encode(parameters[:file], parameters[:word_size])
-
-# build_header(parameters[:type], parameters[:word_size])
-
+encode(parameters)
