@@ -4,6 +4,7 @@
 #include <bitset>
 #include <math.h>
 #include <unordered_map>
+#include <map>
 #include <chrono>
 
 //DEFINES
@@ -28,6 +29,7 @@ bool error = false;
 
 unsigned int currentPosition = 0;
 unordered_map<unsigned long long int,string> positions; //key is position of last word occurence, in value we save that word.
+
 
 int permutationsCount = 0;
 void parseArguments(int argc, char *argv[]){
@@ -114,27 +116,27 @@ void eliasDecoding(){
             string ustr="1";
             if(readBuffer.size()-i-1 >= zerosCounter){//means there is enough chars left to read in buffer
                 ustr+=readBuffer.substr(i+1,zerosCounter);
-                int u = stoi(ustr, nullptr, 2 ) - 1;
+                int k = stoi(ustr, nullptr, 2 ) - 1; 
                 if(C2){//Elias delta  
-                    if(readBuffer.size() - (i+zerosCounter+1) >= u){
-                        ustr = '1';
-                        if(u>0){
-                            ustr+=readBuffer.substr(i+zerosCounter+1,u);
-                            i+=u;
+                    if(readBuffer.size() - (i+zerosCounter+1) >= k){
+                        string vstr = "1";
+                        if(k>0){
+                            vstr+=readBuffer.substr(i+zerosCounter+1,k); 
+                            i+=k; //skip delta code part
                         }
-                        u = stoi(ustr,nullptr,2) - 1;
+                        k = stoi(vstr,nullptr,2) - 1; //delta code part conversion to number
                     }else{
                         readBuffer = readBuffer.substr(i-zerosCounter);
                         return;
                     }
                 }
-                int at = currentPosition - u - 1;
+                int at = currentPosition - k - 1; 
                 string word = positions[at];
                 writeBufferBits+=word;
                 positions.erase(at);
                 positions[currentPosition]=word;
                 currentPosition++;
-                i+=zerosCounter+1;
+                i+=zerosCounter+1; //skip gamma code part
             }else{
                 readBuffer=readBuffer.substr(i-zerosCounter);
                 return;
@@ -148,7 +150,7 @@ void eliasDecoding(){
 void writeToFile(ofstream *outputFile){
     unsigned char byte;
     while(writeBufferBits.size()>=8){
-        for ( int i = 0; i < 8; i++){
+        for ( int i = 0; i < 8; i++){ 
             if(writeBufferBits[i]=='1'){
                 byte|=(128>>i);
             }
